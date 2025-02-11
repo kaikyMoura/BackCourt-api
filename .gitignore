@@ -1,0 +1,42 @@
+# Python
+*.pyc
+*.pyo
+__pycache__/
+*.pyd
+.Python
+
+# Virtual Environment
+venv/
+env/
+ENV/
+*.env
+.venv/
+
+# Pytest
+.cache/
+
+# IDEs
+.vscode/
+.idea/
+
+# FastAPI
+*.sqlite
+
+# Log files
+*.log
+
+# Migrations (se estiver usando banco de dados)
+alembic.ini
+migrations/
+
+# Cachê de pacotes (se usar o pip)
+pip-wheel-metadata/
+
+# Arquivos de configuração do VSCode
+.vscode/
+
+# Arquivos de configuração do PyCharm
+.idea/
+
+# Arquivos de configuração do JetBrains (se usado)
+*.iml
