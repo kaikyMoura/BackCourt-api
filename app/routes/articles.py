@@ -9,6 +9,7 @@ router = APIRouter()
 def get_nba_articles(
     source: Optional[str] = Query(None, description="Filter by source"),
     player: Optional[str] = Query(None, description="Filter by player name"),
+    team: Optional[str] = Query(None, description="Filter by team name"),
     limit: Optional[int] = Query(None, description="Limit the number of articles"),
 ):
     articles = get_articles()
@@ -20,6 +21,14 @@ def get_nba_articles(
         articles = articles[:limit]
         
     if player:
-        articles = [a for a in articles if player.lower() in a["title"].lower()]
+         for article in articles :
+                if player.lower() in article["title"].lower() or player.lower() in article["url"].lower():
+                    return [article]
+                
+    if team:
+         for article in articles :
+                if team.lower() in article["title"].lower() or team.lower() in article["url"].lower():
+                    return [article]
+        
 
     return articles

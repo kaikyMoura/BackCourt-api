@@ -1,7 +1,6 @@
 from nba_api.stats.static import players, teams
 
-def get_active_players(limit):
-    limit == None 
+def get_active_players():
     return players.get_active_players()
 
 def get_player_by_last_name(name):

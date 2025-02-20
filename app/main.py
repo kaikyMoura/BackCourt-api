@@ -1,10 +1,19 @@
 from fastapi import FastAPI
 import uvicorn
-from app.routes.articles import router
+from app.routes import router
+from starlette.middleware.cors import CORSMiddleware
 
 app = FastAPI(title="Basketball Advanced Stats", description="API for basketball advanced stats", version="1.0")
 
-app.include_router(router)
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:3000"],
+    allow_credentials=True,
+    allow_methods=["GET", "POST"],
+    allow_headers=["X-Custom-Header"],
+)
+
+app.include_router(router, prefix='/api/v1')
 
 if __name__ == "__main__":
     uvicorn.run(app, host="0.0.0.0", port=8000)
