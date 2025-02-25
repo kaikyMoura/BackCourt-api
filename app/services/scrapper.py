@@ -8,16 +8,24 @@ WEBSITES = [
         "base": "https://www.espn.com",
         "selectorTitle": "#news-feed .contentItem .contentItem__title",
         "selectorUrl": "a.contentItem__padding",
-        "selectorImage": "img"
+        "selectorImage": "figure.media-wrapper img"
     },
-    # {
-    #     "name": "bleacher_report",
-    #     "address": "https://bleacherreport.com/nba",
-    #     "base": "",
-    #     "selector": ".articleTitle",
-    #     "selectorUrl": 'img',
-    #     "selectorImage": 'img'
-    # },
+    {
+        "name": "espn-headlines",
+        "address": "https://www.espn.com/nba/",
+        "base": "https://www.espn.com",
+        "selectorTitle": ".headlineStack__header + section > ul > li > a",
+        "selectorUrl": 'a',
+        "selectorImage": ''
+    },
+    {
+        "name": "bleacher_report",
+        "address": "https://bleacherreport.com/nba",
+        "base": "https://bleacherreport.com",
+        "selectorTitle": ".MuiTypography-root.MuiTypography-bp_small__headings__title__medium",
+        "selectorUrl": "a.MuiButtonBase-root.MuiCardActionArea-root",
+        "selectorImage": "a.MuiButtonBase-root.MuiCardActionArea-root picture img"
+    },
     # {
     #     "name": 'slam',
     #     "address": 'https://www.slamonline.com/',
@@ -88,7 +96,7 @@ def get_data(website):
                 img_element = image_elements[i]
                 if img_element:
                     image_url = img_element.get("src") or img_element.get("srcset", "").split(",")[0].split(" ")[0]
-                    print(image_url)
+
             if title:
                 articles.append({
                     "title": title,
