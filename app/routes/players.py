@@ -9,7 +9,9 @@ router = APIRouter()
 def get_players(
     is_active: Optional[bool] = Query(True, description="Filter by active players"),
     player: Optional[str] = Query(None, description="Filter by player name"),
-    limit: Optional[int] = Query(None, description="Limit the number of articles"),
+    limit: Optional[int] = Query(None, description="Limit the number of players"),
+    page: Optional[int] = Query(None, description="Paginate the teams"),
+    pageSize: Optional[int] = Query(None, description="Paginate the teams")
 ):
     
     players = []
@@ -26,13 +28,18 @@ def get_players(
     if limit:
         players = players[:limit]
     
+    if page:
+        players = players[(page-1)*pageSize:page*pageSize]
+    
     return players
 
 
 @router.get("/players/carrer_stats/totals/{player_id}", response_model=dict)
 def get_carrer_stats_by_player_id(player_id,
                                   regular_season: Optional[bool] = Query(True, description="Filter by regular season stats"),
-                                  post_season: Optional[bool] = Query(False, description="Filter by playoffs stats")):
+                                  post_season: Optional[bool] = Query(False, description="Filter by playoffs stats"),
+                                  page: Optional[int] = Query(None, description="Paginate the players"),
+                                  pageSize: Optional[int] = Query(None, description="Paginate the players")):
     
     player = get_player_carrer_stats(player_id)
     
@@ -44,5 +51,8 @@ def get_carrer_stats_by_player_id(player_id,
     
     if not regular_season and not post_season:
         player = player.get_dict().get("resultSets")[0]
+    
+    if page:
+        player = player[(page-1)*pageSize:page*pageSize]
     
     return player
