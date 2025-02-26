@@ -1,5 +1,5 @@
 from typing import List, Optional
-from app.services.nba_api.nba_client import get_active_players, get_all_players, get_player_carrer_stats
+from app.services.nba_api.nba_client import get_active_players, get_all_players, get_player_carrer_stats, get_player_info
 from fastapi import APIRouter, FastAPI, Query
 
 app = FastAPI()
@@ -11,7 +11,7 @@ def get_players(
     player: Optional[str] = Query(None, description="Filter by player name"),
     limit: Optional[int] = Query(None, description="Limit the number of players"),
     page: Optional[int] = Query(None, description="Paginate the teams"),
-    pageSize: Optional[int] = Query(None, description="Paginate the teams")
+    pageSize: Optional[int] = Query(10, description="Paginate the teams")
 ):
     
     players = []
@@ -39,7 +39,7 @@ def get_carrer_stats_by_player_id(player_id,
                                   regular_season: Optional[bool] = Query(True, description="Filter by regular season stats"),
                                   post_season: Optional[bool] = Query(False, description="Filter by playoffs stats"),
                                   page: Optional[int] = Query(None, description="Paginate the players"),
-                                  pageSize: Optional[int] = Query(None, description="Paginate the players")):
+                                pageSize: Optional[int] = Query(10, description="Paginate the players")):
     
     player = get_player_carrer_stats(player_id)
     
@@ -56,3 +56,16 @@ def get_carrer_stats_by_player_id(player_id,
         player = player[(page-1)*pageSize:page*pageSize]
     
     return player
+
+
+@router.get('/players/player/info', response_model=dict)
+def get_info(player_name: str = Query(None, description="Filter by player name")):
+    
+    player_info = []
+    
+    all_players = get_all_players()
+    filtered_players = list(filter(lambda p: player_name.lower() in p["full_name"].lower(), all_players))
+    for player in filtered_players:
+        player_info.append(get_player_info(player["id"]))
+    
+    return {player_info}

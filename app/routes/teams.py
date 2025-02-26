@@ -10,7 +10,7 @@ def get_teams(
         name: Optional[str] = Query(None, description="Filter by team name"),
         limit: Optional[int] = Query(None, description="Limit the number of teams"),
         page: Optional[int] = Query(None, description="Paginate the teams"),
-        pageSize: Optional[int] = Query(None, description="Paginate the teams")
+        pageSize: Optional[int] = Query(10, description="Paginate the teams")
     ):
     teams = []
      
