@@ -59,7 +59,7 @@ def get_carrer_stats_by_player_id(player_id,
 
 
 @router.get('/players/player/info', response_model=dict)
-def get_info(player_id: Optional[int] = Query(None, description="Filter by player id"), player_name: Optional[str] = Query(..., description="Filter by player name")):
+def get_info(player_id: Optional[int] = Query(None, description="Filter by player id"), player_name: Optional[str] = Query(None, description="Filter by player name")):
     
     player_info = []
     
