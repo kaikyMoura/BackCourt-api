@@ -4,6 +4,9 @@ from nba_api.stats.endpoints import playercareerstats, commonplayerinfo
 def get_active_players():
     return players.get_active_players()
 
+def get_inactive_players():
+    return players.get_inactive_players()
+
 def get_all_players():
     return players.get_players()
 

@@ -1,5 +1,5 @@
 from typing import List, Optional
-from app.services.nba_api.nba_client import get_active_players, get_all_players, get_player_carrer_stats, get_player_info
+from app.services.nba_api.nba_client import get_active_players, get_all_players, get_player_carrer_stats, get_player_info, get_inactive_players
 from fastapi import APIRouter, FastAPI, Query
 
 app = FastAPI()
@@ -7,7 +7,7 @@ router = APIRouter()
 
 @router.get("/players", response_model=List[dict])
 def get_players(
-    is_active: Optional[bool] = Query(True, description="Filter by active players"),
+    is_active: Optional[bool] = Query(None, description="Filter by active players"),
     player: Optional[str] = Query(None, description="Filter by player name"),
     limit: Optional[int] = Query(None, description="Limit the number of players"),
     page: Optional[int] = Query(None, description="Paginate the teams"),
@@ -16,12 +16,12 @@ def get_players(
     
     players = []
     
-    if is_active:
-        active_players = get_active_players()
-        players = active_players
-        
-    if not is_active:
-        players = get_all_players()  
+    if is_active is True:
+        players = get_active_players()
+    elif is_active is False:
+        players = get_inactive_players()  
+    else:
+        players = get_all_players()
     
     if player:
         players = list(filter(lambda p: player.lower() in p["full_name"].lower(), players))
