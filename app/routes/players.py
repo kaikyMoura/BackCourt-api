@@ -59,13 +59,20 @@ def get_carrer_stats_by_player_id(player_id,
 
 
 @router.get('/players/player/info', response_model=dict)
-def get_info(player_name: str = Query(..., description="Filter by player name")):
+def get_info(player_id: Optional[int] = Query(None, description="Filter by player id"), player_name: Optional[str] = Query(..., description="Filter by player name")):
     
     player_info = []
     
-    all_players = get_all_players()
-    filtered_players = list(filter(lambda p: player_name.lower() in p["full_name"].lower(), all_players))
-    for player in filtered_players:
-        player_info.append(get_player_info(player["id"]))
+    if not player_id and not player_name:
+        raise ValueError("Either player_id or player_name must be provided")
+    
+    if player_id:
+        player_info.append(get_player_info(player_id))
+        
+    if player_name:
+        all_players = get_all_players()
+        filtered_players = list(filter(lambda p: player_name.lower() in p["full_name"].lower(), all_players))
+        for player in filtered_players:
+            player_info.append(get_player_info(player["id"]))
     
     return {"data": player_info}
