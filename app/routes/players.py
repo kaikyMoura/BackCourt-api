@@ -39,7 +39,7 @@ def get_carrer_stats_by_player_id(player_id,
                                   regular_season: Optional[bool] = Query(True, description="Filter by regular season stats"),
                                   post_season: Optional[bool] = Query(False, description="Filter by playoffs stats"),
                                   page: Optional[int] = Query(None, description="Paginate the players"),
-                                pageSize: Optional[int] = Query(10, description="Paginate the players")):
+                                  pageSize: Optional[int] = Query(10, description="Paginate the players")):
     
     player = get_player_carrer_stats(player_id)
     
@@ -57,12 +57,14 @@ def get_carrer_stats_by_player_id(player_id,
     
     return player
 
-
+# Get the player informations (age, height, etc...)
 @router.get('/players/player/info', response_model=dict)
-def get_info(player_id: Optional[int] = Query(None, description="Filter by player id"), player_name: Optional[str] = Query(None, description="Filter by player name")):
+def get_info(player_id: Optional[int] = Query(None, description="Filter by player id"), 
+             player_name: Optional[str] = Query(None, description="Filter by player name")):
     
     player_info = []
     
+    # At least one of the params should be provided
     if not player_id and not player_name:
         raise ValueError("Either player_id or player_name must be provided")
     

@@ -26,23 +26,12 @@ WEBSITES = [
         "selectorUrl": "a.MuiButtonBase-root.MuiCardActionArea-root",
         "selectorImage": "a.MuiButtonBase-root.MuiCardActionArea-root picture img"
     },
-    # {
-    #     "name": 'slam',
-    #     "address": 'https://www.slamonline.com/',
-    #     "base": '',
-    #     "selector": '.h-bloglist-block-content-top > h3 > a',
-    #     "selectorUrl": 'img',
-    #     "selectorImage": 'img'
-    # },
-]
-
-NBA_WEBSITES = [
     {
         "name": 'nba',
         "address": 'https://www.nba.com/news/category/top-stories',
         "base": 'https://www.nba.com',
         "selectorUrl": '.ArticleTile_tileMainContent__c_bU1 > a',
-        "selectorTitle": '.ArticleTile_tileMainContent__c_bU1 > a > header > h3 > span',
+        "selectorTitle": '.ArticleTile_tileMainContent__c_bU1 > a > header > h4 > span',
         "selectorImage": '.ArticleTile_tileImage__no39y img'
     },
     {
@@ -72,13 +61,15 @@ def get_data(website):
         articles = []
         session = requests.Session()
         session.headers.update({
-            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36"
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/133.0.0.0 Safari/537.36"
         })
 
-        response = session.get(website["address"])
+        response = requests.get(website["address"])
         if response.status_code != 200:
             print(f"Failed to retrieve data from {website['name']}, status code {response.status_code}")
             return []
+
+        response.encoding = 'utf-8'
 
         soup = BeautifulSoup(response.text, "html.parser")
 
@@ -97,13 +88,13 @@ def get_data(website):
                 if img_element:
                     image_url = img_element.get("src") or img_element.get("srcset", "").split(",")[0].split(" ")[0]
 
-            if title:
-                articles.append({
-                    "title": title,
-                    "url": url,
-                    "source": website["name"],
-                    "image": image_url
-                })
+            
+            articles.append({
+                "title": title,
+                "url": url,
+                "source": website["name"],
+                "image": image_url
+            })
 
         return articles
 
@@ -115,9 +106,6 @@ def get_data(website):
 def get_articles():
     articles = []
     for website in WEBSITES:
-        articles.extend(get_data(website))
-
-    for website in NBA_WEBSITES:
         articles.extend(get_data(website))
 
     return articles

@@ -11,6 +11,8 @@ def get_nba_articles(
     player: Optional[str] = Query(None, description="Filter by player name"),
     team: Optional[str] = Query(None, description="Filter by team name"),
     limit: Optional[int] = Query(None, description="Limit the number of articles"),
+    page: Optional[int] = Query(None, description="Paginate the players"),
+    pageSize: Optional[int] = Query(10, description="Paginate the players"),
 ):
     articles = get_articles()
     
@@ -29,6 +31,8 @@ def get_nba_articles(
          for article in articles :
                 if team.lower() in article["title"].lower() or team.lower() in article["url"].lower():
                     return [article]
-        
+    
+    if page:
+        player = player[(page-1)*pageSize:page*pageSize]    
 
     return articles
