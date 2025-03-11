@@ -25,11 +25,13 @@ def get_players(
     
     if player:
         players = list(filter(lambda p: player.lower() in p["full_name"].lower(), players))
+        
     if limit:
         players = players[:limit]
     
     if page:
-        players = players[(page-1)*pageSize:page*pageSize]
+        page = page or 1
+        players = players[(page-1) * pageSize : page * pageSize]
     
     return players
 

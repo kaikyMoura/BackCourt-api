@@ -24,5 +24,8 @@ def get_player_info(player_id):
 def get_all_teams():
     return teams.get_teams()
 
-def get_team_by_name(abbreviation):
-    teams.find_team_by_abbreviation(abbreviation)
+def get_team_by_name(full_name):
+    teams.find_teams_by_full_name(full_name)
+
+def get_team_by_nickname(nickname):
+    teams.find_teams_by_nickname(nickname)

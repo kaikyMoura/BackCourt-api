@@ -15,8 +15,10 @@ def get_nba_articles(
     pageSize: Optional[int] = Query(10, description="Paginate the players"),
 ):
     articles = get_articles()
-    
-    if source:
+        
+    if source is None:
+        articles = sorted(articles, key=lambda x: x["source"].lower() != "nba")
+    else:
         articles = [a for a in articles if a["source"].lower() == source.lower()]
 
     if limit:
@@ -33,6 +35,7 @@ def get_nba_articles(
                     return [article]
     
     if page:
-        player = player[(page-1)*pageSize:page*pageSize]    
+        page = page or 1
+        articles = articles[(page - 1) * pageSize : page * pageSize] 
 
     return articles
