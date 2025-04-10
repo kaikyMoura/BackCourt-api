@@ -17,7 +17,7 @@ router = APIRouter()
 
 @router.get("/players", response_model=List[dict])
 def get_players(
-    is_active: Optional[bool] = Query(True, description="Filter by active players"),
+    is_active: Optional[bool] = Query(None, description="Filter by active players"),
     player_name: Optional[str] = Query(None, description="Filter by player name"),
     limit: Optional[int] = Query(None, description="Limit the number of players"),
     page: Optional[int] = Query(None, description="Paginate the teams"),
@@ -61,6 +61,11 @@ def get_player_carrer_totals_by_id(
     page: Optional[int] = Query(None, description="Paginate the seasons"),
     pageSize: Optional[int] = Query(10, description="Paginate the seasons"),
 ):
+    if not player_id:
+        raise HTTPException(
+            status_code=401,
+            detail="Param player_id is required",
+        )
 
     player = get_player_carrer_totals(player_id)
 
@@ -80,8 +85,30 @@ def get_player_carrer_totals_by_id(
                 detail="No season stats found for this player in season {season}",
             )
 
-    if "PTS" in df.columns and "GP" in df.columns and df["GP"].sum() > 0:
-        df["PTS_PER_GAME"] = (df["PTS"] / df["GP"]).round(1)
+    # Check if the player has played any games
+    if "GP" not in df.columns or df["GP"].sum() == 0:
+        return df
+
+    stats = [
+        "PTS",
+        "REB",
+        "AST",
+        "STL",
+        "BLK",
+        "TOV",
+        "FGM",
+        "FGA",
+        "FG3M",
+        "FG3A",
+        "FTM",
+        "FTA",
+    ]
+
+    # Calculate per game stats
+    for stat in stats:
+        if stat in df.columns:
+            per_game_col = f"{stat}_PER_GAME"
+            df[per_game_col] = (df[stat] / df["GP"]).round(1)
 
     df.columns = df.columns.str.lower()
 
