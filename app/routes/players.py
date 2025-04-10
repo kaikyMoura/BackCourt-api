@@ -1,4 +1,7 @@
 from typing import List, Optional
+
+from fastapi.responses import JSONResponse
+import pandas as pd
 from app.services.nba_api.nba_client import (
     get_active_players,
     get_all_players,
@@ -14,8 +17,8 @@ router = APIRouter()
 
 @router.get("/players", response_model=List[dict])
 def get_players(
-    is_active: Optional[bool] = Query(None, description="Filter by active players"),
-    player: Optional[str] = Query(None, description="Filter by player name"),
+    is_active: Optional[bool] = Query(True, description="Filter by active players"),
+    player_name: Optional[str] = Query(None, description="Filter by player name"),
     limit: Optional[int] = Query(None, description="Limit the number of players"),
     page: Optional[int] = Query(None, description="Paginate the teams"),
     pageSize: Optional[int] = Query(10, description="Paginate the teams"),
@@ -30,9 +33,9 @@ def get_players(
     else:
         players = get_all_players()
 
-    if player:
+    if player_name:
         players = list(
-            filter(lambda p: player.lower() in p["full_name"].lower(), players)
+            filter(lambda p: player_name.lower() in p["full_name"].lower(), players)
         )
 
     if limit:
@@ -42,12 +45,12 @@ def get_players(
         page = page or 1
         players = players[(page - 1) * pageSize : page * pageSize]
 
-    return players
+    return JSONResponse(content=players)
 
 
 @router.get("/players/carrer_stats/totals/{player_id}", response_model=dict)
 def get_player_carrer_totals_by_id(
-    player_id,
+    player_id: str,
     regular_season: Optional[bool] = Query(
         True, description="Filter by regular season stats"
     ),
@@ -80,19 +83,19 @@ def get_player_carrer_totals_by_id(
     if "PTS" in df.columns and "GP" in df.columns and df["GP"].sum() > 0:
         df["PTS_PER_GAME"] = (df["PTS"] / df["GP"]).round(1)
 
-    result = df.to_dict(orient="records")
+    df.columns = df.columns.str.lower()
 
     if page:
         start = (page - 1) * pageSize
         end = start + pageSize
         result = result[start:end]
 
-    return {"player_id": player_id, "total_seasons": len(result), "seasons": result}
+    return JSONResponse(content=df.to_dict(orient="records"))
 
 
 # Retrieve general information about the player (age, height, weight, etc.)
 @router.get("/players/player/info", response_model=dict)
-def get_player_info(
+def get_player_common_info(
     player_id: Optional[int] = Query(None, description="Filter by player id"),
     player_name: Optional[str] = Query(None, description="Filter by player name"),
 ):
@@ -118,7 +121,11 @@ def get_player_info(
             )
 
         player_infos = [get_player_info(player["id"]) for player in filtered_players]
-        return {"query": player_name, "results": player_infos}
+
+        df = pd.DataFrame(player_infos)
+        df.columns = df.columns.str.lower()
+
+        return JSONResponse(content=df.to_dict(orient="records"))
 
 
 # @router.get("/players/carrer_stats/cumulative_player_stats", response_model=dict)

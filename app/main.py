@@ -3,7 +3,7 @@ import uvicorn
 from app.routes import router
 from starlette.middleware.cors import CORSMiddleware
 
-app = FastAPI(title="Basketball Advanced Stats", description="API for basketball advanced stats", version="1.0")
+app = FastAPI(title="Backcourt API", description="API for the Backcourt application", version="1.0")
 
 app.add_middleware(
     CORSMiddleware,

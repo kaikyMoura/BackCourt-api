@@ -1,5 +1,6 @@
 from typing import List, Optional
 from fastapi import APIRouter, FastAPI, Query
+from fastapi.responses import JSONResponse
 from app.services.nba_api.nba_client import get_all_teams, get_team_by_name, get_team_by_nickname
 
 app = FastAPI()
@@ -31,4 +32,4 @@ def get_teams(
         page = page or 1
         teams = teams[(page-1) * pageSize: page * pageSize]
         
-    return teams
+    return JSONResponse(content=teams)
