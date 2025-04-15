@@ -6,17 +6,17 @@ WEBSITES = [
         "name": "espn",
         "address": "https://www.espn.com/nba/",
         "base": "https://www.espn.com",
-        "selectorTitle": "#news-feed .contentItem .contentItem__title",
-        "selectorUrl": "a.contentItem__padding",
-        "selectorImage": "figure.media-wrapper img"
+        "selectorTitle": "h2.contentItem__title, h2[data-mptype='story']",
+        "selectorUrl": "a.contentItem__padding[href*='/story/'], a.watch-link[href*='/story/']",
+        "selectorImage": "figure.media-wrapper img, picture.media-wrapper_image img, source[srcset]",
     },
     {
         "name": "espn-headlines",
         "address": "https://www.espn.com/nba/",
         "base": "https://www.espn.com",
         "selectorTitle": ".headlineStack__header + section > ul > li > a",
-        "selectorUrl": 'a',
-        "selectorImage": ''
+        "selectorUrl": "a",
+        "selectorImage": "",
     },
     {
         "name": "bleacher_report",
@@ -24,23 +24,23 @@ WEBSITES = [
         "base": "https://bleacherreport.com",
         "selectorTitle": ".MuiTypography-root.MuiTypography-bp_small__headings__title__medium",
         "selectorUrl": "a.MuiButtonBase-root.MuiCardActionArea-root",
-        "selectorImage": "a.MuiButtonBase-root.MuiCardActionArea-root picture img"
+        "selectorImage": "a.MuiButtonBase-root.MuiCardActionArea-root picture img",
     },
     {
-        "name": 'nba',
-        "address": 'https://www.nba.com/news/category/top-stories',
-        "base": 'https://www.nba.com',
-        "selectorUrl": '.ArticleTile_tileMainContent__c_bU1 > a',
-        "selectorTitle": '.ArticleTile_tileMainContent__c_bU1 > a > header > h4 > span',
-        "selectorImage": '.ArticleTile_tileImage__no39y img'
+        "name": "nba",
+        "address": "https://www.nba.com/news/category/top-stories",
+        "base": "https://www.nba.com",
+        "selectorUrl": ".ArticleTile_tileMainContent__c_bU1 > a",
+        "selectorTitle": ".ArticleTile_tileMainContent__c_bU1 > a > header > h4 > span",
+        "selectorImage": ".ArticleTile_tileImage__no39y img",
     },
     {
-        "name": 'nba_canada',
-        "address": 'https://www.sportingnews.com/ca/nba/news',
-        "base": 'https://www.sportingnews.com',
-        "selectorUrl": '.list-item__title > a',
-        "selectorTitle": '.list-item__title > a',
-        "selectorImage": '.ArticleTile_tileImage__no39y'
+        "name": "nba_canada",
+        "address": "https://www.sportingnews.com/ca/nba/news",
+        "base": "https://www.sportingnews.com",
+        "selectorUrl": ".list-item__title > a",
+        "selectorTitle": ".list-item__title > a",
+        "selectorImage": ".ArticleTile_tileImage__no39y",
     },
 ]
 
@@ -55,25 +55,33 @@ Inspired by the following sources:
 
 """
 
+
 # Get data from a website
 def get_data(website):
     try:
         articles = []
         session = requests.Session()
-        session.headers.update({
-            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/133.0.0.0 Safari/537.36"
-        })
+        session.headers.update(
+            {
+                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/133.0.0.0 Safari/537.36"
+            }
+        )
 
-        response = requests.get(website["address"])
+        response = session.get(website["address"])
         if response.status_code != 200:
-            print(f"Failed to retrieve data from {website['name']}, status code {response.status_code}")
+            print(
+                f"Failed to retrieve data from {website['name']}, status code {response.status_code}"
+            )
             return []
 
-        response.encoding = 'utf-8'
+        response.encoding = "utf-8"
 
         soup = BeautifulSoup(response.text, "html.parser")
 
-        titles = [title.get_text(strip=True) for title in soup.select(website["selectorTitle"])]
+        titles = [
+            title.get_text(strip=True)
+            for title in soup.select(website["selectorTitle"])
+        ]
         urls = [url.get("href") for url in soup.select(website["selectorUrl"])]
         image_elements = soup.select(website["selectorImage"])
 
@@ -86,21 +94,26 @@ def get_data(website):
             if i < len(image_elements):
                 img_element = image_elements[i]
                 if img_element:
-                    image_url = img_element.get("src") or img_element.get("srcset", "").split(",")[0].split(" ")[0]
+                    image_url = (
+                        img_element.get("src")
+                        or img_element.get("srcset", "").split(",")[0].split(" ")[0]
+                    )
 
-            
-            articles.append({
-                "title": title,
-                "url": url,
-                "source": website["name"],
-                "image": image_url
-            })
+            articles.append(
+                {
+                    "title": title,
+                    "url": url,
+                    "source": website["name"],
+                    "image": image_url,
+                }
+            )
 
         return articles
 
     except Exception as e:
         print(f"Error: {e}")
         return []
+
 
 # Get articles from all websites
 def get_articles():

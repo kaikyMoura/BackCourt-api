@@ -1,6 +1,11 @@
 from fastapi import HTTPException
 from nba_api.stats.static import players, teams
-from nba_api.stats.endpoints import playercareerstats, commonplayerinfo, cumestatsplayer
+from nba_api.stats.endpoints import (
+    playercareerstats,
+    commonplayerinfo,
+    cumestatsplayer,
+    playerawards,
+)
 
 
 def get_active_players():
@@ -31,10 +36,18 @@ def get_player_info(player_id):
     return player_info_df.to_dict(orient="records")[0]
 
 
-def get_cumulative_player_stats(game_ids, league_id, player_id, season, season_type):
-    return cumestatsplayer.CumeStatsPlayer(
-        game_ids, league_id, player_id, season, season_type
-    )
+def get_player_awards(player_id):
+    awards_list = playerawards.PlayerAwards(player_id=player_id).get_data_frames()
+
+    if not awards_list or awards_list[0].empty:
+        raise HTTPException(
+            status_code=404, detail=f"No awards found for this player"
+        )
+
+    awards_df = awards_list[0]
+    awards_df.columns = awards_df.columns.str.lower()
+
+    return awards_df.to_dict(orient="records")
 
 
 def get_all_teams():

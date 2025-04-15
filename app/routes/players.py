@@ -1,3 +1,4 @@
+from collections import defaultdict
 from typing import List, Optional
 
 from fastapi.responses import JSONResponse
@@ -5,6 +6,7 @@ import pandas as pd
 from app.services.nba_api.nba_client import (
     get_active_players,
     get_all_players,
+    get_player_awards,
     get_player_carrer_totals,
     get_player_info,
     get_inactive_players,
@@ -155,26 +157,69 @@ def get_player_common_info(
         return JSONResponse(content=df.to_dict(orient="records"))
 
 
-# @router.get("/players/carrer_stats/cumulative_player_stats", response_model=dict)
-# def get_cumulative_player_stats(gameIds: Optional[List[int]] = Query(None, description="Filter by game ids"),
-#                                   league_id: Optional[int] = Query(None, description="Filter by league id"),
-#                                   player_id: Optional[int] = Query(None, description="Filter by player id"),
-#                                   season: Optional[int] = Query(None, description="Filter by season (ex: 2025)"),
-#                                   season_type: Optional[str] = Query(None, description="Filter by season (ex: 2025)")
-#                                   ):
+@router.get("/players/player/awards", response_model=dict)
+def fetch_player_awards(
+    player_id: int = Query(None, description="Filter by player id"),
+    detailed: Optional[bool] = Query(
+        False, description="Return detailed awards information"
+    ),
+):
+    """
+    Fetches awards for a specific player by their player ID.
 
-#     player = get_cumulative_player_stats(gameIds, league_id, player_id, season, season_type)
+    Args:
+        player_id (int): The unique identifier for the player.
+        detailed (bool, optional): If True, returns detailed awards information including descriptions. Defaults to False.
 
-#     if regular_season:
-#         player = player.career_totals_regular_season.get_dict()
+    Returns:
+        dict: A dictionary containing either a summary string of awards or detailed awards information.
+            - If detailed is False, returns a summary string of awards.
+            - If detailed is True, returns a dictionary with 'summary' and 'details' keys.
 
-#     if post_season:
-#         player = player.career_totals_post_season.get_dict()
+    Raises:
+        HTTPException: If player_id is not provided or if no awards are found for the player.
+    """
 
-#     if not regular_season and not post_season:
-#         player = player.get_dict().get("resultSets")[0]
+    if not player_id:
+        raise HTTPException(
+            status_code=400, detail="Missing required parameter: player_id"
+        )
 
-#     if page:
-#         player = player[(page-1)*pageSize:page*pageSize]
+    raw_awards = get_player_awards(player_id)
 
-#     return player
+    if not raw_awards:
+        return {"summary": "", "details": []} if detailed else ""
+
+    award_counts = defaultdict(int)
+
+    processed_awards = []
+    
+    for award in raw_awards:
+            description = award.get('description', '')
+            
+            if "All-Defensive" in description:
+                award_type = "All-Defensive Team"
+            elif "All-Star" in description:
+                award_type = "NBA All-Star"
+            elif "Player of the Week" in description:
+                award_type = "NBA Player of the Week"
+            elif "Gold Medal" in description:
+                award_type = "Olympic Gold Medal"
+            else:
+                award_type = description
+            
+            award_counts[award_type] += 1
+            
+            processed_awards.append(award)
+
+    summary = " | ".join([
+        f"{count} {award}" 
+        for award, count in sorted(
+            award_counts.items(),
+            key=lambda x: (-x[1], x[0]))
+    ])
+
+    if not detailed:
+        return JSONResponse(content=summary)
+
+    return {"summary": summary, "details": raw_awards}
