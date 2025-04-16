@@ -1,5 +1,5 @@
 from collections import defaultdict
-from typing import List, Optional
+from typing import List, Literal, Optional
 
 from fastapi.responses import JSONResponse
 import pandas as pd
@@ -8,6 +8,7 @@ from app.services.nba_api.nba_client import (
     get_all_players,
     get_player_awards,
     get_player_carrer_totals,
+    get_player_fantasy_profile,
     get_player_info,
     get_inactive_players,
 )
@@ -50,7 +51,7 @@ def get_players(
     return JSONResponse(content=players)
 
 
-@router.get("/players/carrer_stats/totals/{player_id}", response_model=dict)
+@router.get("/players/stats/carrer/{player_id}", response_model=dict)
 def get_player_carrer_totals_by_id(
     player_id: str,
     regular_season: Optional[bool] = Query(
@@ -86,31 +87,6 @@ def get_player_carrer_totals_by_id(
                 status_code=404,
                 detail="No season stats found for this player in season {season}",
             )
-
-    # Check if the player has played any games
-    if "GP" not in df.columns or df["GP"].sum() == 0:
-        return df
-
-    stats = [
-        "PTS",
-        "REB",
-        "AST",
-        "STL",
-        "BLK",
-        "TOV",
-        "FGM",
-        "FGA",
-        "FG3M",
-        "FG3A",
-        "FTM",
-        "FTA",
-    ]
-
-    # Calculate per game stats
-    for stat in stats:
-        if stat in df.columns:
-            per_game_col = f"{stat}_PER_GAME"
-            df[per_game_col] = (df[stat] / df["GP"]).round(1)
 
     df.columns = df.columns.str.lower()
 
@@ -193,33 +169,137 @@ def fetch_player_awards(
     award_counts = defaultdict(int)
 
     processed_awards = []
-    
-    for award in raw_awards:
-            description = award.get('description', '')
-            
-            if "All-Defensive" in description:
-                award_type = "All-Defensive Team"
-            elif "All-Star" in description:
-                award_type = "NBA All-Star"
-            elif "Player of the Week" in description:
-                award_type = "NBA Player of the Week"
-            elif "Gold Medal" in description:
-                award_type = "Olympic Gold Medal"
-            else:
-                award_type = description
-            
-            award_counts[award_type] += 1
-            
-            processed_awards.append(award)
 
-    summary = " | ".join([
-        f"{count} {award}" 
-        for award, count in sorted(
-            award_counts.items(),
-            key=lambda x: (-x[1], x[0]))
-    ])
+    for award in raw_awards:
+        description = award.get("description", "")
+
+        if "All-Defensive" in description:
+            award_type = "All-Defensive Team"
+        elif "All-Star" in description:
+            award_type = "NBA All-Star"
+        elif "Player of the Week" in description:
+            award_type = "NBA Player of the Week"
+        elif "Gold Medal" in description:
+            award_type = "Olympic Gold Medal"
+        else:
+            award_type = description
+
+        award_counts[award_type] += 1
+
+        processed_awards.append(award)
+
+    summary = " | ".join(
+        [
+            f"{count} {award}"
+            for award, count in sorted(
+                award_counts.items(), key=lambda x: (-x[1], x[0])
+            )
+        ]
+    )
 
     if not detailed:
         return JSONResponse(content=summary)
 
     return {"summary": summary, "details": raw_awards}
+
+
+@router.get("/players/stats/advanced/{player_id}", response_model=dict)
+def get_player_advanced_stats(
+    player_id: int,
+    dataset: Literal[
+        "Overall", "LastNGames", "DaysRestModified", "Opponent"
+    ],
+    per_mode: Literal["Totals", "Per36", "PerGame"] = "Totals",
+    season: Optional[str] = Query(None, description="Filter by season: (2022-23)"),
+    season_type: Literal["Regular Season", "Pre Season", "Playoffs"] = "Regular Season",
+):
+
+    """
+    Retrieve advanced statistics for a specific player.
+
+    Args:
+        player_id (int): The unique identifier for the player.
+        dataset (Literal): The dataset type to retrieve, options include 
+            "Overall", "LastNGames", "DaysRestModified", "Opponent".
+        per_mode (Literal): The mode for statistics calculation, options include 
+            "Totals", "Per36", "PerGame". Defaults to "Totals".
+        season (Optional[str]): The season to filter by, e.g., "2022-23".
+        season_type (Literal): The type of season to filter by, options include 
+            "Regular Season", "Pre Season", "Playoffs". Defaults to "Regular Season".
+
+    Returns:
+        JSONResponse: A JSON response containing the player's advanced statistics 
+            based on the specified parameters. If no data is found or if the player 
+            has not played any games, an appropriate HTTPException is raised.
+    """
+
+    params = {
+        "player_id": player_id,
+    }
+
+    if per_mode:
+        params["per_mode36"] = per_mode
+    if season:
+        params["season"] = season
+    if season_type:
+        params["season_type_playoffs"] = season_type
+
+    dataset_index = {
+        "Overall": 0,
+        "LastNGames": 1,
+        "DaysRestModified": 2,
+        "Opponent": 3,
+    }
+
+    fantasy_profile_df  = get_player_fantasy_profile(params)
+
+    # Check if dataset is valid
+    if dataset not in dataset_index:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Invalid parameter dataset: {dataset}.. Available options: {list(dataset_index.keys())}",
+        )
+
+    # Get the selected dataset replacing "get_data_frames()[0]"
+    df = fantasy_profile_df[dataset_index[dataset]]
+
+    if df.empty:
+        raise HTTPException(
+            status_code=404, detail="No data found for this player"
+        )
+    
+    df.columns = df.columns.str.lower()
+
+    # Check if the player has played any games
+    if "gp" not in df.columns or df["gp"].sum() == 0:
+        return JSONResponse(
+            content={
+                "player_id": player_id,
+                "dataset": dataset,
+                "per_mode": per_mode or "All",
+                "season": season or "All",
+                "season_type": season_type or "All",
+                "stats": []
+            }
+        )
+    
+    stats = [
+        "pts", "reb", "ast", "stl", "blk", "tov", "fgm", "fga",
+        "fg3m", "fg3a", "ftm", "fta", "dreb", "oreb", "pf", "plus_minus", "min"
+    ]
+
+    for stat in stats:
+        if stat in df.columns:
+            per_game_col = f"{stat}_per_game"
+            df[per_game_col] = (df[stat] / df["gp"]).round(1)
+
+    return JSONResponse(
+        content={
+            "player_id": player_id,
+            "dataset": dataset,
+            "per_mode": per_mode or "All",
+            "season": season or "All",
+            "season_type": season_type or "All",
+            "stats": df.drop(columns=['group_set'], errors='ignore').to_dict(orient="records"),
+        }
+)
