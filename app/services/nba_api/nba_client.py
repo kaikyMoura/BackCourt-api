@@ -7,6 +7,7 @@ from nba_api.stats.endpoints import (
     playerfantasyprofile,
     playerawards,
 )
+import pandas as pd
 
 
 def get_active_players():
@@ -37,7 +38,7 @@ def get_player_info(player_id):
     return player_info_df.to_dict(orient="records")[0]
 
 
-def get_player_fantasy_profile(params: dict):
+def get_player_fantasy_profile_season(params: dict):
     """
     Retrieve the fantasy profile for a specific player using provided parameters.
 
@@ -60,6 +61,46 @@ def get_player_fantasy_profile(params: dict):
         raise HTTPException(status_code=500, detail=f"Unexpected error: {e}")
 
     return fantasy_profile.get_data_frames()
+
+
+def get_player_fantasy_profile_all(params: dict, dataset_index: int = 0):
+    dfs = []
+    player_id = params.get("player_id")
+    season_type = params.get("season_type", "Regular Season")
+    per_mode = params.get("per_mode", "PerGame")
+
+    career_stats = get_player_carrer_totals(player_id)
+    if season_type == "Regular Season":
+        season_df = career_stats.season_totals_regular_season.get_data_frame()
+    else:
+        season_df = career_stats.season_totals_post_season.get_data_frame()
+
+    all_seasons = season_df["SEASON_ID"].unique()
+
+    for season_id in all_seasons:
+        try:
+            profile = get_player_fantasy_profile_season(
+                {
+                    "player_id": player_id,
+                    "season": season_id,
+                    "per_mode36": per_mode,
+                    "season_type_playoffs": season_type,
+                }
+            )
+
+            df = profile[dataset_index]
+            df["SEASON"] = season_id
+            dfs.append(df)
+
+        except Exception as e:
+            print(
+                f"[WARN] Error getting fantasy profile for player {player_id} in season {season_id}: {e}"
+            )
+
+    if not dfs:
+        return pd.DataFrame()
+
+    return pd.concat(dfs, ignore_index=True)
 
 
 def get_player_awards(player_id):

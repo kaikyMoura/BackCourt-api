@@ -8,7 +8,8 @@ from app.services.nba_api.nba_client import (
     get_all_players,
     get_player_awards,
     get_player_carrer_totals,
-    get_player_fantasy_profile,
+    get_player_fantasy_profile_all,
+    get_player_fantasy_profile_season,
     get_player_info,
     get_inactive_players,
 )
@@ -54,10 +55,9 @@ def get_players(
 @router.get("/players/stats/carrer/{player_id}", response_model=dict)
 def get_player_carrer_totals_by_id(
     player_id: str,
-    regular_season: Optional[bool] = Query(
-        True, description="Filter by regular season stats"
-    ),
-    post_season: Optional[bool] = Query(False, description="Filter by playoffs stats"),
+   season_type: Optional[Literal [
+       "Regular Season", "Pre Season", "Playoffs"
+   ]] = Query(None, description="Filter by season type"),
     season: Optional[str] = Query(
         None, description="Filter by specific season, e.g., '2023-24'"
     ),
@@ -72,9 +72,9 @@ def get_player_carrer_totals_by_id(
 
     player = get_player_carrer_totals(player_id)
 
-    if regular_season:
+    if season_type == "Regular Season":
         df = player.season_totals_regular_season.get_data_frame()
-    elif post_season:
+    elif season_type == "Playoffs":
         df = player.season_totals_post_season.get_data_frame()
     else:
         df = player.career_totals_regular_season.get_data_frame()
@@ -241,8 +241,6 @@ def get_player_advanced_stats(
         params["per_mode36"] = per_mode
     if season:
         params["season"] = season
-    if season_type:
-        params["season_type_playoffs"] = season_type
 
     dataset_index = {
         "Overall": 0,
@@ -251,27 +249,22 @@ def get_player_advanced_stats(
         "Opponent": 3,
     }
 
-    fantasy_profile_df  = get_player_fantasy_profile(params)
-
-    # Check if dataset is valid
     if dataset not in dataset_index:
         raise HTTPException(
             status_code=400,
-            detail=f"Invalid parameter dataset: {dataset}.. Available options: {list(dataset_index.keys())}",
+            detail=f"Invalid dataset: {dataset}. Available options: {list(dataset_index.keys())}",
         )
 
-    # Get the selected dataset replacing "get_data_frames()[0]"
-    df = fantasy_profile_df[dataset_index[dataset]]
+    if season == "All":
+        fantasy_profile_df = get_player_fantasy_profile_all(params, dataset_index[dataset])
+    else :
+        fantasy_profile_df = get_player_fantasy_profile_season(params)[dataset_index[dataset]]
 
-    if df.empty:
-        raise HTTPException(
-            status_code=404, detail="No data found for this player"
-        )
+    df = fantasy_profile_df
     
     df.columns = df.columns.str.lower()
 
-    # Check if the player has played any games
-    if "gp" not in df.columns or df["gp"].sum() == 0:
+    if df.empty or "gp" not in df.columns or df["gp"].sum() == 0:
         return JSONResponse(
             content={
                 "player_id": player_id,
@@ -283,16 +276,6 @@ def get_player_advanced_stats(
             }
         )
     
-    stats = [
-        "pts", "reb", "ast", "stl", "blk", "tov", "fgm", "fga",
-        "fg3m", "fg3a", "ftm", "fta", "dreb", "oreb", "pf", "plus_minus", "min"
-    ]
-
-    for stat in stats:
-        if stat in df.columns:
-            per_game_col = f"{stat}_per_game"
-            df[per_game_col] = (df[stat] / df["gp"]).round(1)
-
     return JSONResponse(
         content={
             "player_id": player_id,
@@ -302,4 +285,4 @@ def get_player_advanced_stats(
             "season_type": season_type or "All",
             "stats": df.drop(columns=['group_set'], errors='ignore').to_dict(orient="records"),
         }
-)
+    )
