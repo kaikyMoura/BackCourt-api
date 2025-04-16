@@ -1,13 +1,13 @@
-<h2 align="center">Basketball Advanced Stats Api</h2>
-<p align="center"><i>Repository for the Basketball Advanced Stats API</i></p>
+<h2 align="center">BackCourt Api</h2>
+<p align="center"><i>Repository for the BackCourt | NBA Stats & News Api</i></p>
 
-![GitHub top language](https://img.shields.io/github/languages/top/kaikyMoura/basketball_advandced_stats-api)
-[![Codacy Badge](https://app.codacy.com/project/badge/Grade/ce1f958181d743b98107dbc70dfac5ed)](https://app.codacy.com/gh/kaikyMoura/basketball_advandced_stats-api/dashboard?utm_source=gh&utm_medium=referral&utm_content=&utm_campaign=Badge_grade)
-![Repository size](https://img.shields.io/github/repo-size/kaikyMoura/basketball_advandced_stats-api)
-![Github last commit](https://img.shields.io/github/last-commit/kaikyMoura/basketball_advandced_stats-api)
+![GitHub top language](https://img.shields.io/github/languages/top/kaikyMoura/BackCourt-api)
+[![Codacy Badge](https://app.codacy.com/project/badge/Grade/ce1f958181d743b98107dbc70dfac5ed)](https://app.codacy.com/gh/kaikyMoura/BackCourt-api/dashboard?utm_source=gh&utm_medium=referral&utm_content=&utm_campaign=Badge_grade)
+![Repository size](https://img.shields.io/github/repo-size/kaikyMoura/BackCourt-api)
+![Github last commit](https://img.shields.io/github/last-commit/kaikyMoura/BackCourt-api)
 ![License](https://img.shields.io/aur/license/LICENSE)
-![Languages count](https://img.shields.io/github/languages/count/kaikyMoura/basketball_advandced_stats-api)
-<!-- ![Languages count](https://img.shields.io/docker/cloud/build/kaikyMoura/basketball_advandced_stats-api) -->
+![Languages count](https://img.shields.io/github/languages/count/kaikyMoura/BackCourt-api)
+<!-- ![Languages count](https://img.shields.io/docker/cloud/build/kaikyMoura/BackCourt-api) -->
 
 
 
