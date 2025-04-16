@@ -4,8 +4,8 @@ from nba_api.stats.static import players, teams
 from nba_api.stats.endpoints import (
     playercareerstats,
     commonplayerinfo,
-    playerfantasyprofile,
     playerawards,
+    playerdashboardbyyearoveryear,
 )
 import pandas as pd
 
@@ -38,7 +38,7 @@ def get_player_info(player_id):
     return player_info_df.to_dict(orient="records")[0]
 
 
-def get_player_fantasy_profile_season(params: dict):
+def get_player_dashboard_by_year_over_year(params: dict):
     """
     Retrieve the fantasy profile for a specific player using provided parameters.
 
@@ -53,21 +53,19 @@ def get_player_fantasy_profile_season(params: dict):
     """
 
     try:
-        fantasy_profile = playerfantasyprofile.PlayerFantasyProfile(**params)
+        return playerdashboardbyyearoveryear.PlayerDashboardByYearOverYear(**params)
 
     except json.JSONDecodeError as e:
         raise HTTPException(status_code=502, detail=f"Error decoding JSON: {e}")
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Unexpected error: {e}")
 
-    return fantasy_profile.get_data_frames()
 
-
-def get_player_fantasy_profile_all(params: dict, dataset_index: int = 0):
+def get_player_seasons_dashboard(params: dict, dataset_index: int = 0):
     dfs = []
     player_id = params.get("player_id")
-    season_type = params.get("season_type", "Regular Season")
-    per_mode = params.get("per_mode", "PerGame")
+    season_type = params.get("season_type_playoffs", "Regular Season")
+    per_mode = params.get("per_mode_detailed", "PerGame")
 
     career_stats = get_player_carrer_totals(player_id)
     if season_type == "Regular Season":
@@ -79,14 +77,14 @@ def get_player_fantasy_profile_all(params: dict, dataset_index: int = 0):
 
     for season_id in all_seasons:
         try:
-            profile = get_player_fantasy_profile_season(
+            profile = get_player_dashboard_by_year_over_year(
                 {
                     "player_id": player_id,
                     "season": season_id,
-                    "per_mode36": per_mode,
+                    "per_mode_detailed": per_mode,
                     "season_type_playoffs": season_type,
                 }
-            )
+            ).get_data_frames()
 
             df = profile[dataset_index]
             df["SEASON"] = season_id

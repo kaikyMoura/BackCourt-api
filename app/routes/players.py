@@ -8,8 +8,8 @@ from app.services.nba_api.nba_client import (
     get_all_players,
     get_player_awards,
     get_player_carrer_totals,
-    get_player_fantasy_profile_all,
-    get_player_fantasy_profile_season,
+    get_player_seasons_dashboard,
+    get_player_dashboard_by_year_over_year,
     get_player_info,
     get_inactive_players,
 )
@@ -52,50 +52,86 @@ def get_players(
     return JSONResponse(content=players)
 
 
-@router.get("/players/stats/carrer/{player_id}", response_model=dict)
-def get_player_carrer_totals_by_id(
+@router.get("/players/stats/career/{player_id}", response_model=dict)
+def get_player_career_stats(
     player_id: str,
-   season_type: Optional[Literal [
-       "Regular Season", "Pre Season", "Playoffs"
-   ]] = Query(None, description="Filter by season type"),
+    season_type: Optional[Literal["Regular Season", "Pre Season", "Playoffs"]] = Query(
+        None, description="Filter by season type"
+    ),
     season: Optional[str] = Query(
-        None, description="Filter by specific season, e.g., '2023-24'"
+        None, description="Filter by specific season, e.g., '2023-24', All"
     ),
     page: Optional[int] = Query(None, description="Paginate the seasons"),
-    pageSize: Optional[int] = Query(10, description="Paginate the seasons"),
+    page_size: Optional[int] = Query(10, description="Paginate the seasons"),
 ):
     if not player_id:
         raise HTTPException(
-            status_code=401,
+            status_code=400,
             detail="Param player_id is required",
         )
 
-    player = get_player_carrer_totals(player_id)
+    player_totals = get_player_carrer_totals(player_id)
 
-    if season_type == "Regular Season":
-        df = player.season_totals_regular_season.get_data_frame()
-    elif season_type == "Playoffs":
-        df = player.season_totals_post_season.get_data_frame()
+    if season != "All":
+        if season_type == "Playoffs":
+            df = player_totals.career_totals_post_season.get_data_frame()
+        else:
+            df = player_totals.career_totals_regular_season.get_data_frame()
     else:
-        df = player.career_totals_regular_season.get_data_frame()
-
-    if season:
-        df = df[df["SEASON_ID"] == season]
-
-        if df.empty:
-            raise HTTPException(
-                status_code=404,
-                detail="No season stats found for this player in season {season}",
-            )
+        if season_type == "Playoffs":
+            df = player_totals.season_totals_post_season.get_data_frame()
+        else:
+            df = player_totals.season_totals_regular_season.get_data_frame()
 
     df.columns = df.columns.str.lower()
 
-    if page:
-        start = (page - 1) * pageSize
-        end = start + pageSize
-        result = result[start:end]
+    if season and season != "All":
+        df = df[df["season_id"] == season]
+        if df.empty:
+            raise HTTPException(
+                status_code=404,
+                detail=f"No season stats found for this player in season {season}",
+            )
 
-    return JSONResponse(content=df.to_dict(orient="records"))
+    if "gp" not in df.columns or df["gp"].sum() == 0:
+        return JSONResponse(
+            content={
+                "season_type": season_type or "Regular Season",
+                "totals" if season != "All" else "seasons": [],
+            }
+        )
+
+    stats_columns = [
+        "pts",
+        "reb",
+        "ast",
+        "stl",
+        "blk",
+        "tov",
+        "fgm",
+        "fga",
+        "fg3m",
+        "fg3a",
+        "ftm",
+        "fta",
+    ]
+
+    for stat in stats_columns:
+        if stat in df.columns:
+            df[f"{stat}_per_game"] = (df[stat] / df["gp"]).round(1)
+
+    if page:
+        start_idx = (page - 1) * page_size
+        end_idx = start_idx + page_size
+        df = df.iloc[start_idx:end_idx]
+
+    response_key = "totals" if season != "All" else "seasons"
+    return JSONResponse(
+        content={
+            "season_type": season_type or "Regular Season",
+            response_key: df.drop(columns=["player_id"]).to_dict(orient="records"),
+        }
+    )
 
 
 # Retrieve general information about the player (age, height, weight, etc.)
@@ -206,83 +242,83 @@ def fetch_player_awards(
 @router.get("/players/stats/advanced/{player_id}", response_model=dict)
 def get_player_advanced_stats(
     player_id: int,
-    dataset: Literal[
-        "Overall", "LastNGames", "DaysRestModified", "Opponent"
-    ],
-    per_mode: Literal["Totals", "Per36", "PerGame"] = "Totals",
-    season: Optional[str] = Query(None, description="Filter by season: (2022-23)"),
+    per_mode: Literal[
+        "Totals",
+        "PerGame",
+        "MinutesPer",
+        "Per48",
+        "Per40",
+        "Per36",
+        "PerMinute",
+        "PerPossession",
+        "PerPlay",
+        "Per100Possessions",
+        "Per100Plays",
+    ] = "Totals",
+    season: Optional[str] = Query(
+        None, description="Filter by season: (2022-23) or All"
+    ),
     season_type: Literal["Regular Season", "Pre Season", "Playoffs"] = "Regular Season",
 ):
 
     """
-    Retrieve advanced statistics for a specific player.
+    Retrieve advanced statistics for a specific player using provided parameters.
 
     Args:
         player_id (int): The unique identifier for the player.
-        dataset (Literal): The dataset type to retrieve, options include 
-            "Overall", "LastNGames", "DaysRestModified", "Opponent".
-        per_mode (Literal): The mode for statistics calculation, options include 
-            "Totals", "Per36", "PerGame". Defaults to "Totals".
-        season (Optional[str]): The season to filter by, e.g., "2022-23".
-        season_type (Literal): The type of season to filter by, options include 
-            "Regular Season", "Pre Season", "Playoffs". Defaults to "Regular Season".
+        per_mode (Literal["Totals", "PerGame", "MinutesPer", "Per48", "Per40", "Per36", "PerMinute", "PerPossession", "PerPlay", "Per100Possessions", "Per100Plays"]): The type of advanced statistics to retrieve.
+        season (Optional[str]): Filter by season: (2022-23) or All
+        season_type (Literal["Regular Season", "Pre Season", "Playoffs"]): Filter by season type
 
     Returns:
-        JSONResponse: A JSON response containing the player's advanced statistics 
-            based on the specified parameters. If no data is found or if the player 
-            has not played any games, an appropriate HTTPException is raised.
-    """
+        dict: A dictionary containing the advanced statistics information.
 
+    Raises:
+        HTTPException: If no advanced statistics are found for the player.
+    """
     params = {
         "player_id": player_id,
+        "season_type_playoffs": season_type,
     }
 
     if per_mode:
-        params["per_mode36"] = per_mode
+        params["per_mode_detailed"] = per_mode
     if season:
         params["season"] = season
 
-    dataset_index = {
-        "Overall": 0,
-        "LastNGames": 1,
-        "DaysRestModified": 2,
-        "Opponent": 3,
-    }
-
-    if dataset not in dataset_index:
-        raise HTTPException(
-            status_code=400,
-            detail=f"Invalid dataset: {dataset}. Available options: {list(dataset_index.keys())}",
-        )
-
     if season == "All":
-        fantasy_profile_df = get_player_fantasy_profile_all(params, dataset_index[dataset])
-    else :
-        fantasy_profile_df = get_player_fantasy_profile_season(params)[dataset_index[dataset]]
+        fantasy_profile_df = get_player_seasons_dashboard(params, 1)
+    else:
+        fantasy_profile_df = get_player_dashboard_by_year_over_year(
+            params
+        ).get_data_frames()
 
     df = fantasy_profile_df
-    
+
     df.columns = df.columns.str.lower()
 
     if df.empty or "gp" not in df.columns or df["gp"].sum() == 0:
         return JSONResponse(
             content={
                 "player_id": player_id,
-                "dataset": dataset,
                 "per_mode": per_mode or "All",
                 "season": season or "All",
                 "season_type": season_type or "All",
-                "stats": []
+                "stats": [],
             }
         )
-    
+
     return JSONResponse(
         content={
             "player_id": player_id,
-            "dataset": dataset,
             "per_mode": per_mode or "All",
             "season": season or "All",
             "season_type": season_type or "All",
-            "stats": df.drop(columns=['group_set'], errors='ignore').to_dict(orient="records"),
+            "stats": df.drop(
+                columns=[
+                    col for col in df.columns if "_rank" in col or "group_set" in col
+                ],
+                errors="ignore",
+            ).to_dict(orient="records"),
         }
     )
