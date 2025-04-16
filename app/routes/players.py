@@ -15,6 +15,8 @@ from app.services.nba_api.nba_client import (
 )
 from fastapi import APIRouter, FastAPI, HTTPException, Query
 
+from app.utils.clean_json import clean_nan
+
 app = FastAPI()
 router = APIRouter()
 
@@ -59,11 +61,28 @@ def get_player_career_stats(
         None, description="Filter by season type"
     ),
     season: Optional[str] = Query(
-        None, description="Filter by specific season, e.g., '2023-24', All"
+        None,
+        description="Filter by specific season, e.g., '2023-24', All or empty to get the carrer totals",
     ),
     page: Optional[int] = Query(None, description="Paginate the seasons"),
     page_size: Optional[int] = Query(10, description="Paginate the seasons"),
 ):
+    """
+    Retrieve the career statistics for a specific player using provided parameters.
+
+    Args:
+        player_id (str): The unique identifier for the player.
+        season_type (Literal["Regular Season", "Pre Season", "Playoffs"]): Filter by season type.
+        season (str): Filter by specific season, e.g., '2023-24', All or empty to get the carrer totals.
+        page (int): Paginate the seasons.
+        page_size (int): Paginate the seasons.
+
+    Returns:
+        dict: A dictionary containing the career statistics information.
+
+    Raises:
+        HTTPException: If no career statistics are found for the player.
+    """
     if not player_id:
         raise HTTPException(
             status_code=400,
@@ -126,10 +145,14 @@ def get_player_career_stats(
         df = df.iloc[start_idx:end_idx]
 
     response_key = "totals" if season != "All" else "seasons"
+
+    records = df.drop(columns=["player_id"]).to_dict(orient="records")
+
+    safe_data = clean_nan(records)
     return JSONResponse(
         content={
             "season_type": season_type or "Regular Season",
-            response_key: df.drop(columns=["player_id"]).to_dict(orient="records"),
+            response_key: safe_data,
         }
     )
 
@@ -260,7 +283,6 @@ def get_player_advanced_stats(
     ),
     season_type: Literal["Regular Season", "Pre Season", "Playoffs"] = "Regular Season",
 ):
-
     """
     Retrieve advanced statistics for a specific player using provided parameters.
 
@@ -288,6 +310,7 @@ def get_player_advanced_stats(
 
     if season == "All":
         fantasy_profile_df = get_player_seasons_dashboard(params, 1)
+        fantasy_profile_df.columns = fantasy_profile_df.columns.str.lower()
     else:
         fantasy_profile_df = get_player_dashboard_by_year_over_year(
             params
@@ -295,9 +318,7 @@ def get_player_advanced_stats(
 
     df = fantasy_profile_df
 
-    df.columns = df.columns.str.lower()
-
-    if df.empty or "gp" not in df.columns or df["gp"].sum() == 0:
+    if not df or "gp" not in df.columns or df["gp"].sum() == 0:
         return JSONResponse(
             content={
                 "player_id": player_id,
@@ -316,7 +337,12 @@ def get_player_advanced_stats(
             "season_type": season_type or "All",
             "stats": df.drop(
                 columns=[
-                    col for col in df.columns if "_rank" in col or "group_set" in col
+                    col
+                    for col in df.columns
+                    if "_rank" in col
+                    or "group_set" in col
+                    or "wnba_fantasy_pts" in col
+                    or "season" in col
                 ],
                 errors="ignore",
             ).to_dict(orient="records"),

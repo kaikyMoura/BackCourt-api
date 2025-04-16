@@ -87,6 +87,7 @@ def get_player_seasons_dashboard(params: dict, dataset_index: int = 0):
             ).get_data_frames()
 
             df = profile[dataset_index]
+            df.columns = df.columns.str.lower()
             df["SEASON"] = season_id
             dfs.append(df)
 
