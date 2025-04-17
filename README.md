@@ -77,7 +77,10 @@ uvicorn app.main:app --reload
 http://localhost:8000/docs
 ```
 
-### 6. Terms of Use
+### 7. Deployment
+The deployment is done through [Render](https://render.com/), a free platform for deploying web applications.
+
+### 8. Terms of Use
 - This repository has no commercial or business intentions
 - All rights are reserved to the [NBA](https://www.nba.com).
 - Check the [Terms of Use](https://www.nba.com/termsofuse#ownership-and-use-restrictions) to learn about the usage of the data.
