@@ -78,7 +78,11 @@ http://localhost:8000/docs
 ```
 
 ### 7. Deployment
-The deployment is done through [Render](https://render.com/), a free platform for deploying web applications.
+The deployment is done using Google Cloud Run and Cloud Build, which allows you to easily deploy your application to Google Cloud Platform.
+
+- [Google Cloud Platform](https://cloud.google.com/)
+- [Google Cloud Run](https://cloud.google.com/run)
+- [Google Cloud Build](https://cloud.google.com/build)
 
 ### 8. Terms of Use
 - This repository has no commercial or business intentions
