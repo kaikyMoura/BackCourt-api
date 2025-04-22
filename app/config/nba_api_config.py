@@ -6,7 +6,25 @@ from urllib3.util.retry import Retry
 
 
 def configure_nba_api():
-    """Configura headers e sessão para a NBA API"""
+    """
+    Configure the NBA API library to use a custom session with retry policy.
+
+    This function configures the NBA API library to use a custom session with a
+    retry policy. This allows the library to retry failed requests up to 5 times,
+    with an exponential backoff between retries.
+
+    The custom session is created using the requests library, with a retry policy
+    that retries on the following status codes: 408, 429, 500, 502, 503, 504.
+
+    The custom session is then mounted on the NBA API library, and the timeout
+    for the session is set to 60 seconds. The timeout for the NBA API library
+    is set to 70 seconds.
+
+    Finally, the custom session is returned.
+
+    Returns:
+        requests.Session: The custom session with retry policy.
+    """
     NBAStatsHTTP._NBAStatsHTTP__headers = {
         "Host": "stats.nba.com",
         "Connection": "keep-alive",
