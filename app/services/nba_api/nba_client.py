@@ -24,12 +24,12 @@ def get_all_players():
 
 # Get the player totals
 def get_player_carrer_totals(params: dict):
-    return playercareerstats.PlayerCareerStats(**params)
+    return playercareerstats.PlayerCareerStats(**params, timeout=70)
 
 
 def get_player_info(player_id):
     player_info_df = commonplayerinfo.CommonPlayerInfo(
-        player_id
+        player_id, timeout=70
     ).common_player_info.get_data_frame()
 
     if player_info_df.empty:
@@ -53,7 +53,7 @@ def get_player_dashboard_by_year_over_year(params: dict):
     """
 
     try:
-        return playerdashboardbyyearoveryear.PlayerDashboardByYearOverYear(**params)
+        return playerdashboardbyyearoveryear.PlayerDashboardByYearOverYear(**params, timeout=70)
 
     except json.JSONDecodeError as e:
         raise HTTPException(status_code=502, detail=f"Error decoding JSON: {e}")
@@ -164,7 +164,7 @@ def get_player_awards(player_id):
     Raises:
         HTTPException: If no awards are found for the player.
     """
-    awards_list = playerawards.PlayerAwards(player_id=player_id).get_data_frames()
+    awards_list = playerawards.PlayerAwards(player_id=player_id, timeout=70).get_data_frames()
 
     if not awards_list or awards_list[0].empty:
         raise HTTPException(status_code=404, detail=f"No awards found for this player")
