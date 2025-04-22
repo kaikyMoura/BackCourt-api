@@ -1,3 +1,4 @@
+import os
 from fastapi import FastAPI
 import uvicorn
 from app.config.nba_api_config import configure_nba_api_headers
@@ -23,4 +24,4 @@ app.add_middleware(
 app.include_router(router, prefix="/v1")
 
 if __name__ == "__main__":
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    uvicorn.run(app, host="0.0.0.0", port=os.environ.get("PORT", 8080))
