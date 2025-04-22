@@ -6,6 +6,7 @@ from urllib3.util.retry import Retry
 
 
 def configure_nba_api():
+    """Configura headers e sessão para a NBA API"""
     NBAStatsHTTP._NBAStatsHTTP__headers = {
         "Host": "stats.nba.com",
         "Connection": "keep-alive",
@@ -24,12 +25,23 @@ def configure_nba_api():
 
     retries = Retry(
         total=5,
-        backoff_factor=0.5,
-        status_forcelist=[500, 502, 503, 504],
+        backoff_factor=1,
+        status_forcelist=[408, 429, 500, 502, 503, 504],
+        allowed_methods=["GET"],
     )
-    session.mount("https://", HTTPAdapter(max_retries=retries))
 
-    timeout = 60
-    session.timeout = timeout
+    adapter = HTTPAdapter(
+        max_retries=retries, pool_connections=20, pool_maxsize=20, pool_block=False
+    )
+
+    session.mount("https://", adapter)
+    session.mount("http://", adapter)
+
+    session.timeout = 60
+    NBAStatsHTTP.timeout = 70
 
     endpoints._session = session
+
+    NBAStatsHTTP._NBAStatsHTTP__timeout = (7, 15)
+
+    return session
