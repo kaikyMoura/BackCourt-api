@@ -12,6 +12,7 @@ from app.services.nba_api.nba_client import (
     get_player_dashboard_by_year_over_year,
     get_player_info,
     get_inactive_players,
+    get_player_career_dashboard,
 )
 from fastapi import APIRouter, FastAPI, HTTPException, Query
 
@@ -64,6 +65,13 @@ def get_player_career_stats(
         None,
         description="Filter by specific season, e.g., '2023-24', All or empty to get the carrer totals",
     ),
+    perMode: Optional[
+        Literal[
+            "Totals",
+            "PerGame",
+            "Per36",
+        ]
+    ] = Query(None, description="Filter by per mode"),
     page: Optional[int] = Query(None, description="Paginate the seasons"),
     page_size: Optional[int] = Query(10, description="Paginate the seasons"),
 ):
@@ -89,7 +97,14 @@ def get_player_career_stats(
             detail="Param player_id is required",
         )
 
-    player_totals = get_player_carrer_totals(player_id)
+    params = {
+        "player_id": player_id,
+    }
+
+    if perMode:
+        params["per_mode36"] = perMode
+
+    player_totals = get_player_carrer_totals(params)
 
     if season != "All":
         if season_type == "Playoffs":
@@ -279,7 +294,8 @@ def get_player_advanced_stats(
         "Per100Plays",
     ] = "Totals",
     season: Optional[str] = Query(
-        None, description="Filter by season: (2022-23) or All"
+        None,
+        description="Filter by season: (2022-23), All for all seasons, Totals for career totals or None for the current season",
     ),
     season_type: Literal["Regular Season", "Pre Season", "Playoffs"] = "Regular Season",
 ):
@@ -305,29 +321,39 @@ def get_player_advanced_stats(
 
     if per_mode:
         params["per_mode_detailed"] = per_mode
-    if season:
-        params["season"] = season
+
+    fantasy_profile_df = pd.DataFrame()
 
     if season == "All":
-        fantasy_profile_df = get_player_seasons_dashboard(params, 1)
+        fantasy_profile_df = get_player_seasons_dashboard(params)
         fantasy_profile_df.columns = fantasy_profile_df.columns.str.lower()
+
+    elif season and season != "Totals":
+        params["season"] = season
+        dashboard = get_player_dashboard_by_year_over_year(params)
+        fantasy_profile_df = dashboard.by_year_player_dashboard.get_data_frame()
+        fantasy_profile_df.columns = fantasy_profile_df.columns.str.lower()
+
+    elif season == "Totals":
+        fantasy_profile_df = get_player_career_dashboard(params)
+        fantasy_profile_df.columns = fantasy_profile_df.columns.str.lower()
+
     else:
-        fantasy_profile_df = get_player_dashboard_by_year_over_year(
-            params
-        ).get_data_frames()
+        dashboard = get_player_dashboard_by_year_over_year(params)
+        fantasy_profile_df = dashboard.overall_player_dashboard.get_data_frame()
+        fantasy_profile_df.columns = fantasy_profile_df.columns.str.lower()
 
-    df = fantasy_profile_df
-
-    if not df or "gp" not in df.columns or df["gp"].sum() == 0:
-        return JSONResponse(
-            content={
-                "player_id": player_id,
-                "per_mode": per_mode or "All",
-                "season": season or "All",
-                "season_type": season_type or "All",
-                "stats": [],
-            }
-        )
+    stats_data = fantasy_profile_df.drop(
+        columns=[
+            col
+            for col in fantasy_profile_df.columns
+            if "_rank" in col
+            or "group_set" in col
+            or "wnba_fantasy_pts" in col
+            or "season" in col
+        ],
+        errors="ignore",
+    ).drop_duplicates(keep="first")
 
     return JSONResponse(
         content={
@@ -335,16 +361,6 @@ def get_player_advanced_stats(
             "per_mode": per_mode or "All",
             "season": season or "All",
             "season_type": season_type or "All",
-            "stats": df.drop(
-                columns=[
-                    col
-                    for col in df.columns
-                    if "_rank" in col
-                    or "group_set" in col
-                    or "wnba_fantasy_pts" in col
-                    or "season" in col
-                ],
-                errors="ignore",
-            ).to_dict(orient="records"),
+            "stats": stats_data.to_dict(orient="records"),
         }
     )

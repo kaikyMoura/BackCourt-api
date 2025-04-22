@@ -23,8 +23,8 @@ def get_all_players():
 
 
 # Get the player totals
-def get_player_carrer_totals(player_id):
-    return playercareerstats.PlayerCareerStats(player_id)
+def get_player_carrer_totals(params: dict):
+    return playercareerstats.PlayerCareerStats(**params)
 
 
 def get_player_info(player_id):
@@ -61,34 +61,44 @@ def get_player_dashboard_by_year_over_year(params: dict):
         raise HTTPException(status_code=500, detail=f"Unexpected error: {e}")
 
 
-def get_player_seasons_dashboard(params: dict, dataset_index: int = 0):
+def get_player_seasons_dashboard(params: dict):
     dfs = []
+    season_df = pd.DataFrame()
     player_id = params.get("player_id")
     season_type = params.get("season_type_playoffs", "Regular Season")
     per_mode = params.get("per_mode_detailed", "PerGame")
+    season = params.get("season", "All")
 
-    career_stats = get_player_carrer_totals(player_id)
-    if season_type == "Regular Season":
-        season_df = career_stats.season_totals_regular_season.get_data_frame()
+    career_stats = get_player_carrer_totals({"player_id": player_id})
+    print(season)
+    if season != "All":
+        if season_type == "Playoffs":
+            season_df = career_stats.career_totals_post_season.get_data_frame()
+        else:
+            season_df = career_stats.career_totals_regular_season.get_data_frame()
     else:
-        season_df = career_stats.season_totals_post_season.get_data_frame()
+        if season_type == "Playoffs":
+            season_df = career_stats.season_totals_post_season.get_data_frame()
+        else:
+            season_df = career_stats.season_totals_regular_season.get_data_frame()
 
     all_seasons = season_df["SEASON_ID"].unique()
 
     for season_id in all_seasons:
         try:
-            profile = get_player_dashboard_by_year_over_year(
+            dashboard = get_player_dashboard_by_year_over_year(
                 {
                     "player_id": player_id,
                     "season": season_id,
                     "per_mode_detailed": per_mode,
                     "season_type_playoffs": season_type,
                 }
-            ).get_data_frames()
+            )
 
-            df = profile[dataset_index]
+            df = dashboard.by_year_player_dashboard.get_data_frame()
             df.columns = df.columns.str.lower()
             df["SEASON"] = season_id
+
             dfs.append(df)
 
         except Exception as e:
@@ -96,11 +106,50 @@ def get_player_seasons_dashboard(params: dict, dataset_index: int = 0):
                 f"[WARN] Error getting fantasy profile for player {player_id} in season {season_id}: {e}"
             )
 
-    if not dfs:
-        return pd.DataFrame()
+    return pd.concat(dfs, ignore_index=True) if dfs else pd.DataFrame()
 
-    return pd.concat(dfs, ignore_index=True)
+def get_player_career_dashboard(params: dict):
+    """
+    Retrieve the fantasy profile for a specific player using provided parameters.
+    Returns a DataFrame containing the player's fantasy profile and career totals stats.
 
+    Args:
+        params (dict): A dictionary of parameters to fetch the player's fantasy profile.
+
+    Returns:
+        pd.DataFrame: A DataFrame containing the player's fantasy profile information.
+
+    Raises:
+        HTTPException: If no fantasy profile is found for the player.
+    """
+    player_id = params.get("player_id")
+    season_type = params.get("season_type_playoffs", "Regular Season")
+    
+    career_stats = get_player_carrer_totals({"player_id": player_id})
+    
+    if season_type == "Playoffs":
+        base_df = career_stats.career_totals_post_season.get_data_frame()
+    else:
+        base_df = career_stats.career_totals_regular_season.get_data_frame()
+    
+    base_df.columns = base_df.columns.str.lower()
+    
+    params_all = params.copy()
+    params_all["season"] = "All"
+    all_seasons_df = get_player_seasons_dashboard(params_all)
+    
+    if not all_seasons_df.empty:
+        fantasy_cols = [col for col in all_seasons_df.columns 
+                       if "fantasy" in col or "advanced" in col
+                       or col in ["plus_minus", "pf", "pfd", "dd2", "td3"]]
+        
+        all_seasons_df = all_seasons_df.loc[:, ~all_seasons_df.columns.duplicated()]
+
+        totals_df = all_seasons_df.drop_duplicates(subset=["group_value"], keep="first")
+
+        fantasy_totals = totals_df[fantasy_cols].sum().to_frame().T
+        final_df = pd.concat([base_df.reset_index(drop=True), fantasy_totals.reset_index(drop=True)], axis=1)
+        return final_df
 
 def get_player_awards(player_id):
     """

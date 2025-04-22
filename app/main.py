@@ -1,9 +1,10 @@
 import os
 from fastapi import FastAPI
 import uvicorn
-from app.config.nba_api_config import configure_nba_api_headers
+from app.config.nba_api_config import configure_nba_api
 from app.routes import router
 from starlette.middleware.cors import CORSMiddleware
+
 
 app = FastAPI(
     title="Backcourt API",
@@ -11,7 +12,7 @@ app = FastAPI(
     version="1.0",
 )
 
-configure_nba_api_headers()
+configure_nba_api()
 
 app.add_middleware(
     CORSMiddleware,

@@ -1,7 +1,11 @@
 from nba_api.stats.library.http import NBAStatsHTTP
+from nba_api.stats import endpoints
+import requests
+from requests.adapters import HTTPAdapter
+from urllib3.util.retry import Retry
 
 
-def configure_nba_api_headers():
+def configure_nba_api():
     NBAStatsHTTP._NBAStatsHTTP__headers = {
         "Host": "stats.nba.com",
         "Connection": "keep-alive",
@@ -14,5 +18,18 @@ def configure_nba_api_headers():
         "Referer": "https://www.nba.com/",
         "Accept-Encoding": "gzip, deflate, br",
         "Accept-Language": "en-US,en;q=0.9",
-        "timeout": "60000",
     }
+
+    session = requests.Session()
+
+    retries = Retry(
+        total=5,
+        backoff_factor=0.5,
+        status_forcelist=[500, 502, 503, 504],
+    )
+    session.mount("https://", HTTPAdapter(max_retries=retries))
+
+    timeout = 60
+    session.timeout = timeout
+
+    endpoints._session = session
