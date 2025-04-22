@@ -52,5 +52,4 @@ async def root():
 
 
 if __name__ == "__main__":
-    configure_nba_api()
     uvicorn.run(app, host="0.0.0.0", port=os.environ.get("PORT", 8080))
