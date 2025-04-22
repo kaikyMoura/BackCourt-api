@@ -55,11 +55,8 @@ def configure_nba_api():
     session.mount("https://", adapter)
     session.mount("http://", adapter)
 
-    session.timeout = 60
-    NBAStatsHTTP.timeout = 70
-
     endpoints._session = session
 
-    NBAStatsHTTP._NBAStatsHTTP__timeout = (7, 15)
+    NBAStatsHTTP._NBAStatsHTTP__timeout = (7, 30)
 
     return session
