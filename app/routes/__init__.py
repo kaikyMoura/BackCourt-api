@@ -1,12 +1,11 @@
-from numpy import outer
-from .players import router as playeres_router
-from .teams import router as teams_router
-from .articles import router as articles_router
+from .players_route import router as players_route
+from .teams_route import router as teams_route
+from .articles_route import router as articles_route
 from fastapi import APIRouter
 
 router = APIRouter()
 
 
-router.include_router(playeres_router)
-router.include_router(articles_router)
-router.include_router(teams_router)
+router.include_router(players_route)
+router.include_router(articles_route)
+router.include_router(teams_route)

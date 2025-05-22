@@ -1,7 +1,7 @@
 from typing import List, Optional
 from fastapi import APIRouter, FastAPI, Query
 from fastapi.responses import JSONResponse
-from app.services.nba_api.nba_client import get_all_teams, get_team_by_name, get_team_by_nickname
+from app.services.nba_api.nba_client_service import get_all_teams, get_team_by_name, get_team_by_nickname
 
 app = FastAPI()
 router = APIRouter()
@@ -12,15 +12,15 @@ def get_teams(
         name: Optional[str] = Query(None, description="Filter by team name"),
         limit: Optional[int] = Query(None, description="Limit the number of teams"),
         page: Optional[int] = Query(None, description="Paginate the teams"),
-        pageSize: Optional[int] = Query(10, description="Paginate the teams")
+        page_size: Optional[int] = Query(10, description="Paginate the teams")
     ):
     teams = []
     
     if nickname:
-        teams = list(filter(lambda team: teams.lower() in team["nickname"].lower(), get_team_by_nickname))
+        teams = list(filter(lambda team: nickname.lower() in team["nickname"].lower(), get_team_by_nickname(nickname)))
      
     if name:
-        teams = list(filter(lambda team: teams.lower() in team["full_name"].lower(), get_team_by_name))
+        teams = list(filter(lambda team: name.lower() in team["full_name"].lower(), get_team_by_name(name)))
         
     else:
         teams = get_all_teams()
@@ -30,6 +30,7 @@ def get_teams(
         
     if page:
         page = page or 1
-        teams = teams[(page-1) * pageSize: page * pageSize]
+        if page_size is not None:
+            teams = teams[(page - 1) * page_size : page * page_size]
         
     return JSONResponse(content=teams)

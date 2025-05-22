@@ -180,8 +180,8 @@ def get_all_teams():
 
 
 def get_team_by_name(full_name):
-    teams.find_teams_by_full_name(full_name)
+    return teams.find_teams_by_full_name(full_name)
 
 
 def get_team_by_nickname(nickname):
-    teams.find_teams_by_nickname(nickname)
+    return teams.find_teams_by_nickname(nickname)

@@ -15,7 +15,7 @@ def get_nba_articles(
     team_name: Optional[str] = Query(None, description="Filter by team name"),
     limit: Optional[int] = Query(None, description="Limit the number of articles"),
     page: Optional[int] = Query(None, description="Paginate the articles"),
-    pageSize: Optional[int] = Query(10, description="Paginate the articles"),
+    page_size: Optional[int] = Query(10, description="Paginate the articles"),
 ):
     articles = get_articles()
 
@@ -45,6 +45,7 @@ def get_nba_articles(
 
     if page:
         page = page or 1
-        articles = articles[(page - 1) * pageSize : page * pageSize]
+        if page_size is not None:
+            articles = articles[(page - 1) * page_size : page * page_size]
 
     return JSONResponse(content=articles)

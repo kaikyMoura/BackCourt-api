@@ -1,9 +1,10 @@
-from collections import defaultdict
+from collections import Counter, defaultdict
 from typing import List, Literal, Optional
 
+from nba_api.stats.endpoints import CommonTeamRoster
 from fastapi.responses import JSONResponse
 import pandas as pd
-from app.services.nba_api.nba_client import (
+from app.services.nba_api.nba_client_service import (
     get_active_players,
     get_all_players,
     get_player_awards,
@@ -13,6 +14,7 @@ from app.services.nba_api.nba_client import (
     get_player_info,
     get_inactive_players,
     get_player_career_dashboard,
+    get_team_by_name,
 )
 from fastapi import APIRouter, FastAPI, HTTPException, Query
 
@@ -20,15 +22,17 @@ from app.utils.clean_json import clean_nan
 
 app = FastAPI()
 router = APIRouter()
+player_counter = Counter()
 
 
 @router.get("/players", response_model=List[dict])
 def get_players(
     is_active: Optional[bool] = Query(None, description="Filter by active players"),
     player_name: Optional[str] = Query(None, description="Filter by player name"),
+    team_name: Optional[str] = Query(None, description="Filter by team"),
     limit: Optional[int] = Query(None, description="Limit the number of players"),
     page: Optional[int] = Query(None, description="Paginate the teams"),
-    pageSize: Optional[int] = Query(10, description="Paginate the teams"),
+    page_size: Optional[int] = Query(10, description="Paginate the teams"),
 ):
 
     players = []
@@ -44,13 +48,21 @@ def get_players(
         players = list(
             filter(lambda p: player_name.lower() in p["full_name"].lower(), players)
         )
+        player_counter[player_name.lower()] += 1
+
+    if team_name:
+        teams = list(filter(lambda team: team_name.lower() in team["full_name"].lower(), get_team_by_name(team_name)))
+        team = teams[0]
+        roster = CommonTeamRoster(team_id=team["id"]).common_team_roster.get_data_frame()
+        players = list(filter(lambda p: p["id"] in roster["PLAYER_ID"].tolist(), players))
 
     if limit:
         players = players[:limit]
 
     if page:
         page = page or 1
-        players = players[(page - 1) * pageSize : page * pageSize]
+        if page and page_size:
+            players = players[(page - 1) * page_size : page * page_size]
 
     return JSONResponse(content=players)
 
@@ -155,8 +167,8 @@ def get_player_career_stats(
             df[f"{stat}_per_game"] = (df[stat] / df["gp"]).round(1)
 
     if page:
-        start_idx = (page - 1) * page_size
-        end_idx = start_idx + page_size
+        start_idx = (page - 1) * (page_size or 0)
+        end_idx = (start_idx) + (page_size or 0)
         df = df.iloc[start_idx:end_idx]
 
     response_key = "totals" if season != "All" else "seasons"
@@ -336,24 +348,26 @@ def get_player_advanced_stats(
 
     elif season == "Totals":
         fantasy_profile_df = get_player_career_dashboard(params)
-        fantasy_profile_df.columns = fantasy_profile_df.columns.str.lower()
+        if fantasy_profile_df is not None:
+            fantasy_profile_df.columns = fantasy_profile_df.columns.str.lower()
 
     else:
         dashboard = get_player_dashboard_by_year_over_year(params)
         fantasy_profile_df = dashboard.overall_player_dashboard.get_data_frame()
         fantasy_profile_df.columns = fantasy_profile_df.columns.str.lower()
 
-    stats_data = fantasy_profile_df.drop(
-        columns=[
-            col
-            for col in fantasy_profile_df.columns
-            if "_rank" in col
-            or "group_set" in col
-            or "wnba_fantasy_pts" in col
-            or "season" in col
-        ],
-        errors="ignore",
-    ).drop_duplicates(keep="first")
+    if fantasy_profile_df is not None:
+        stats_data = fantasy_profile_df.drop(
+            columns=[
+                col
+                for col in fantasy_profile_df.columns
+                if "_rank" in col
+                or "group_set" in col
+                or "wnba_fantasy_pts" in col
+                or "season" in col
+            ],
+            errors="ignore",
+        ).drop_duplicates(keep="first")
 
     return JSONResponse(
         content={

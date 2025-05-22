@@ -25,7 +25,7 @@ def configure_nba_api():
     Returns:
         requests.Session: The custom session with retry policy.
     """
-    NBAStatsHTTP._NBAStatsHTTP__headers = {
+    NBAStatsHTTP.headers = {
         "Host": "stats.nba.com",
         "Connection": "keep-alive",
         "Accept": "application/json, text/plain, */*",
@@ -55,8 +55,6 @@ def configure_nba_api():
     session.mount("https://", adapter)
     session.mount("http://", adapter)
 
-    endpoints._session = session
-
-    NBAStatsHTTP._NBAStatsHTTP__timeout = (7, 30)
+    NBAStatsHTTP._session = session
 
     return session
