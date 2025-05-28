@@ -84,7 +84,7 @@ def get_player_career_stats(
     ),
     season: Optional[str] = Query(
         None,
-        description="Filter by specific season, e.g., '2023-24', All or empty to get the carrer totals",
+        description="Filter by season: (2022-23), All for all seasons, Totals for career totals or None for the current season",
     ),
     perMode: Optional[
         Literal[
