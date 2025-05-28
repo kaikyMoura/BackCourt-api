@@ -66,7 +66,7 @@ You can install the dependencies using the requerements.txt file:
 ```console
 pip install -r requirements.txt
 ```
-
+or install directly using:
 ```console
 pip install fastapi uvicorn requests beautifulsoup4 numpy pandas nba_api
 ```
