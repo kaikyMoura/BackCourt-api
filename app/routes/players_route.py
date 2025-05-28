@@ -51,10 +51,19 @@ def get_players(
         player_counter[player_name.lower()] += 1
 
     if team_name:
-        teams = list(filter(lambda team: team_name.lower() in team["full_name"].lower(), get_team_by_name(team_name)))
+        teams = list(
+            filter(
+                lambda team: team_name.lower() in team["full_name"].lower(),
+                get_team_by_name(team_name),
+            )
+        )
         team = teams[0]
-        roster = CommonTeamRoster(team_id=team["id"]).common_team_roster.get_data_frame()
-        players = list(filter(lambda p: p["id"] in roster["PLAYER_ID"].tolist(), players))
+        roster = CommonTeamRoster(
+            team_id=team["id"]
+        ).common_team_roster.get_data_frame()
+        players = list(
+            filter(lambda p: p["id"] in roster["PLAYER_ID"].tolist(), players)
+        )
 
     if limit:
         players = players[:limit]
@@ -118,26 +127,40 @@ def get_player_career_stats(
 
     player_totals = get_player_carrer_totals(params)
 
-    if season != "All":
+    if season == "All":
+        if season_type == "Playoffs":
+            df = player_totals.season_totals_post_season.get_data_frame()
+        else:
+            df = player_totals.season_totals_regular_season.get_data_frame()
+
+    elif season == "Totals" or not season:
         if season_type == "Playoffs":
             df = player_totals.career_totals_post_season.get_data_frame()
         else:
             df = player_totals.career_totals_regular_season.get_data_frame()
+
     else:
         if season_type == "Playoffs":
             df = player_totals.season_totals_post_season.get_data_frame()
         else:
             df = player_totals.season_totals_regular_season.get_data_frame()
 
-    df.columns = df.columns.str.lower()
+        if "SEASON_ID" not in df.columns:
+            raise HTTPException(
+                status_code=500,
+                detail="Expected 'SEASON_ID' column not found in data.",
+        )
 
-    if season and season != "All":
-        df = df[df["season_id"] == season]
+        df = df[df["SEASON_ID"] == season]
         if df.empty:
             raise HTTPException(
                 status_code=404,
                 detail=f"No season stats found for this player in season {season}",
             )
+
+
+
+    df.columns = df.columns.str.lower()
 
     if "gp" not in df.columns or df["gp"].sum() == 0:
         return JSONResponse(
